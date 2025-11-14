@@ -7,7 +7,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const handleLogout = () => {
     localStorage.removeItem("token"); // optional
-    router.push("/auth/login");
+    router.push("/");
   };
 
   return (
@@ -61,9 +61,9 @@ export default function AdminDashboard() {
       {/* Menu Buttons */}
       <div className="w-full max-w-md space-y-4">
         {[
-          { label: "Employees Details", path: "/admin/employees" },
-          { label: "Active Tools", path: "/admin/tools" },
-          { label: "View Sites", path: "/admin/sites" },
+          { label: "Manage Employees", path: "/admin/employees" },
+          { label: "Manage Tools", path: "/admin/tools" },
+          { label: "Manage Sites", path: "/admin/sites" },
         ].map((item, index) => (
           <button
             key={index}

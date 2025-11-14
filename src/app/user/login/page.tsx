@@ -17,7 +17,7 @@ export default function AdminLoginPage() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/login`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/login`,
         {
           method: "POST",
           headers: {
@@ -40,8 +40,8 @@ export default function AdminLoginPage() {
 
       // Save token if API provides one
       // localStorage.setItem("token", data.token);
-
-      router.push("/admin/dashboard");
+      localStorage.setItem("userEmail", email);
+      router.push("/user/home");
     } catch (err: any) {
       setError(err.message || "Something went wrong");
     }
@@ -53,7 +53,7 @@ export default function AdminLoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white shadow-lg rounded-2xl p-8">
         <h1 className="text-2xl font-bold text-center text-gray-800">
-          Admin Login
+          User Login
         </h1>
         <p className="text-gray-500 text-center mt-1">
           Sign in to your account

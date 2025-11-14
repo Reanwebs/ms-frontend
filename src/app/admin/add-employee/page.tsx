@@ -6,17 +6,51 @@ import { ArrowLeft } from "lucide-react";
 
 export default function AddEmployee() {
   const router = useRouter();
+
   const [form, setForm] = useState({
-    name: "",
+    full_name: "",
     email: "",
-    role: "",
+    password: "",
+    phone: "",
+    base_wage: "",
+    overtime_wage_percent: "",
+    created_by: "",
+    is_admin: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleChange = (key: string, value: any) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]: value ?? "", // ensures never undefined
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Employee Added:", form);
-    alert("Employee added successfully!");
-    router.push("/admin/dashboard");
+
+    const payload = {
+      full_name: form.full_name,
+      email: form.email,
+      password: form.password,
+      phone: form.phone,
+      base_wage: parseFloat(form.base_wage || "0"),
+      overtime_wage_percent: parseFloat(form.overtime_wage_percent || "0"),
+      created_by: form.created_by,
+      is_admin: form.is_admin,
+    };
+
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/user/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });    
+
+    if (res.ok) {
+      alert("User added successfully!");
+      router.push("/admin/dashboard");
+    } else {
+      alert("Failed to add user");
+    }
   };
 
   return (
@@ -30,40 +64,82 @@ export default function AddEmployee() {
         </button>
 
         <h1 className="text-2xl font-semibold text-gray-800 mb-6">
-          Add Employee
+          Add User
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
             placeholder="Full Name"
-            className="w-full border rounded-xl p-3 focus:outline-none focus:ring focus:ring-gray-300"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
+            className="w-full border rounded-xl p-3 text-black"
+            value={form.full_name}
+            onChange={(e) => handleChange("full_name", e.target.value)}
           />
+
           <input
             type="email"
-            placeholder="Email Address"
-            className="w-full border rounded-xl p-3 focus:outline-none focus:ring focus:ring-gray-300"
+            placeholder="Email"
+            className="w-full border rounded-xl p-3 text-black"
             value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            required
+            onChange={(e) => handleChange("email", e.target.value)}
           />
+
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full border rounded-xl p-3 text-black"
+            value={form.password}
+            onChange={(e) => handleChange("password", e.target.value)}
+          />
+
           <input
             type="text"
-            placeholder="Role / Position"
-            className="w-full border rounded-xl p-3 focus:outline-none focus:ring focus:ring-gray-300"
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-            required
+            placeholder="Phone"
+            className="w-full border rounded-xl p-3 text-black"
+            value={form.phone}
+            onChange={(e) => handleChange("phone", e.target.value)}
           />
+
+          <input
+            type="number"
+            placeholder="Base Wage"
+            className="w-full border rounded-xl p-3 text-black"
+            value={form.base_wage}
+            onChange={(e) => handleChange("base_wage", e.target.value)}
+          />
+
+          <input
+            type="number"
+            placeholder="Overtime Wage %"
+            className="w-full border rounded-xl p-3 text-black"
+            value={form.overtime_wage_percent}
+            onChange={(e) =>
+              handleChange("overtime_wage_percent", e.target.value)
+            }
+          />
+
+          <input
+            type="text"
+            placeholder="Created By"
+            className="w-full border rounded-xl p-3 text-black"
+            value={form.created_by}
+            onChange={(e) => handleChange("created_by", e.target.value)}
+          />
+
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={form.is_admin}
+              onChange={(e) => handleChange("is_admin", e.target.checked)}
+            />
+            <span className="text-black">Is Admin</span>
+          </label>
 
           <button
             type="submit"
-            className="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition"
+            className="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800"
           >
-            Add Employee
+            Add User
           </button>
         </form>
       </div>
