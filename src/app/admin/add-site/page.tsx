@@ -1,9 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import MapPicker from "@/app/components/MapPicker";
+const MapPicker = dynamic(() => import("@/app/components/MapPicker"), {
+  ssr: false,
+});
 
 export default function AddSite() {
   const router = useRouter();
