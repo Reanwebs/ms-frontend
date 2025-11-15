@@ -1,15 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Wrench, CheckCircle, ArrowLeftCircle } from "lucide-react";
 
+type Tool = {
+  id: number;
+  name: string;
+  status: "available" | "borrowed";
+};
+
 export default function ToolsPage() {
-  const [tools, setTools] = useState([
-    { id: 1, name: "Hammer", status: "available" },
-    { id: 2, name: "Drill Machine", status: "borrowed" },
-    { id: 3, name: "Screwdriver Set", status: "available" },
-    { id: 4, name: "Measuring Tape", status: "available" },
-  ]);
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  useEffect(() => {
+    async function fetchTools() {
+      try {
+        const res = await fetch(`${API_BASE}/user/tools/fetch`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // only if backend uses cookies
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch tools");
+
+        const data = await res.json();
+        setTools(data.tools || data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchTools();
+  }, [API_BASE]); // now API_BASE exists
 
   const handleAction = (id: number) => {
     setTools((prev) =>
@@ -23,6 +53,18 @@ export default function ToolsPage() {
       )
     );
   };
+
+  if (loading) {
+    return <div className="text-center mt-10 text-gray-500">Loading tools...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-center mt-10 text-red-500">
+        Failed to load tools: {error}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto mt-8 space-y-6">
@@ -39,11 +81,11 @@ export default function ToolsPage() {
             <div className="flex items-center gap-3">
               <Wrench
                 size={22}
-                className={`${
+                className={
                   tool.status === "available"
                     ? "text-green-500"
                     : "text-yellow-500"
-                }`}
+                }
               />
               <div>
                 <p className="text-gray-800 font-medium">{tool.name}</p>

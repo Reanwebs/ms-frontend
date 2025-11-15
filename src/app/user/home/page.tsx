@@ -38,6 +38,7 @@ export default function HomePage() {
   }, []);
 
   const handleCheckInOut = async () => {
+    console.log("Sending attendance request...");
     if (!user) return;
   
     if (!navigator.geolocation) {
@@ -45,40 +46,52 @@ export default function HomePage() {
       return;
     }
   
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-  
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/attendance`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              user_id: user.id,
-              lat,
-              lng,
-            }),
-          }
-        );
-  
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed");
-  
-        alert(data.message);
-        setIsCheckedIn(data.attendance.clockout === 0 ? true : false);
-        setStatus(
-          data.attendance.clockout === 0
-            ? "You have checked in."
-            : "You have checked out."
-        );
-      } catch (err: any) {
-        alert(err.message);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        console.log("GEO SUCCESS", pos);
+    
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+    
+        try {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/attendance`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                user_id: user.id,
+                lat,
+                lng,
+              }),
+            }
+          );
+    
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Failed");
+    
+          alert(data.message);
+          setIsCheckedIn(data.attendance.clockout === 0);
+          setStatus(
+            data.attendance.clockout === 0
+              ? "You have checked in."
+              : "You have checked out."
+          );
+        } catch (err: any) {
+          alert(err.message);
+        }
+      },
+      (err) => {
+        console.log("GEO ERROR", err);
+        alert("Geolocation Error: " + err.message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
       }
-    });
+    );    
   };
   
 
