@@ -9,24 +9,62 @@ export default function ActiveToolsPage() {
   const [editTool, setEditTool] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Fetch tools
-  useEffect(() => {
-    const fetchTools = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/tools/fetch`
-        );
-        const data = await res.json();
-        setTools(data);
-      } catch (err) {
-        console.error("Failed to fetch tools:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Search & filter states
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [subCategoryFilter, setSubCategoryFilter] = useState("");
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Fetch tools with pagination + filters
+  const fetchTools = async () => {
+    setLoading(true);
+
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+
+    if (search) params.append("name", search);
+    if (categoryFilter) params.append("category", categoryFilter);
+    if (subCategoryFilter) params.append("sub_category", subCategoryFilter);
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/tools/fetch?` +
+          params.toString()
+      );
+
+      const json = await res.json();
+
+      setTools(json.data || []);
+      setTotalPages(json.totalPages || 1);
+    } catch (err) {
+      console.error("Failed to fetch tools:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Re-fetch when filters or page changes
+  useEffect(() => {
     fetchTools();
-  }, []);
+  }, [page, search, categoryFilter, subCategoryFilter]);
+
+  // Generate unique category list
+  const categories = Array.from(new Set(tools.map((t) => t.category)));
+
+  // Generate subcategory list based on selected category
+  const subCategories = Array.from(
+    new Set(
+      tools
+        .filter((t) => (categoryFilter ? t.category === categoryFilter : true))
+        .map((t) => t.sub_category)
+    )
+  );
 
   // Update tool
   const updateTool = async () => {
@@ -45,6 +83,7 @@ export default function ActiveToolsPage() {
 
       if (!res.ok) throw new Error("Update failed");
 
+      // Update frontend instantly
       setTools((prev) =>
         prev.map((t) => (t.id === editTool.id ? editTool : t))
       );
@@ -59,21 +98,76 @@ export default function ActiveToolsPage() {
 
   return (
     <div className="p-6 text-black">
-      <h1 className="text-xl font-semibold mb-4 text-black">Tools List</h1>
+      <h1 className="text-xl font-semibold mb-4">Tools List</h1>
+
+      {/* 🔍 SEARCH & FILTER SECTION */}
+      <div className="flex flex-wrap gap-4 mb-6">
+
+  {/* Search Bar */}
+  <input
+    type="text"
+    placeholder="Search tool by name..."
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    className="border border-gray-400 px-3 py-2 rounded w-64 bg-white text-black"
+  />
+
+  {/* Category Filter */}
+  <select
+    className="border border-gray-400 px-3 py-2 rounded bg-white text-black"
+    value={categoryFilter}
+    onChange={(e) => {
+      setCategoryFilter(e.target.value);
+      setSubCategoryFilter("");
+    }}
+  >
+    <option value="">All Categories</option>
+    {categories.map((cat, i) => (
+      <option key={i} value={cat}>
+        {cat}
+      </option>
+    ))}
+  </select>
+
+  {/* Sub Category Filter */}
+  <select
+    className="border border-gray-400 px-3 py-2 rounded bg-white text-black"
+    value={subCategoryFilter}
+    onChange={(e) => setSubCategoryFilter(e.target.value)}
+  >
+    <option value="">All Sub Categories</option>
+    {subCategories.map((sub, i) => (
+      <option key={i} value={sub}>
+        {sub}
+      </option>
+    ))}
+  </select>
+
+</div>
 
       {loading ? (
-        <p className="text-gray-600">Loading tools...</p>
+        <p>Loading tools...</p>
       ) : tools.length === 0 ? (
         <p>No tools found.</p>
       ) : (
         <div className="space-y-4">
           {tools.map((t) => (
             <div key={t.id} className="border p-4 rounded-xl bg-gray-50">
-              <p><strong>Name:</strong> {t.name}</p>
-              <p><strong>Category:</strong> {t.category}</p>
-              <p><strong>Sub Category:</strong> {t.sub_category}</p>
-              <p><strong>Tool ID:</strong> {t.tool_id}</p>
-              <p><strong>Available:</strong> {t.available_count}/{t.count}</p>
+              <p>
+                <strong>Name:</strong> {t.name}
+              </p>
+              <p>
+                <strong>Category:</strong> {t.category}
+              </p>
+              <p>
+                <strong>Sub Category:</strong> {t.sub_category}
+              </p>
+              <p>
+                <strong>Tool ID:</strong> {t.tool_id}
+              </p>
+              <p>
+                <strong>Available:</strong> {t.available_count}/{t.count}
+              </p>
 
               <button
                 onClick={() => setEditTool(t)}
@@ -83,6 +177,31 @@ export default function ActiveToolsPage() {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* PAGINATION */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-4 mt-6">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-40"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-2 bg-gray-100 rounded">
+            Page {page} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-40"
+          >
+            Next
+          </button>
         </div>
       )}
 
@@ -124,7 +243,7 @@ export default function ActiveToolsPage() {
                           : e.target.value,
                     })
                   }
-                  className="w-full border px-3 py-2 rounded text-black"
+                  className="w-full border px-3 py-2 rounded"
                 />
               </div>
             ))}
