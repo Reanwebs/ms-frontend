@@ -4,20 +4,20 @@ import { useEffect, useState } from "react";
 import { Wrench, CheckCircle, ArrowLeftCircle } from "lucide-react";
 
 type Tool = {
-  id: number;
+  id: string;
   name: string;
   category?: string;
   sub_category?: string;
   count?: number;
   available_count?: number;
   used_count?: number;
-  status?: "available" | "borrowed"; // fallback
 };
 
 export default function ToolsPage() {
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(true); // assume true until API shows 401
 
   // Filters
   const [search, setSearch] = useState("");
@@ -30,6 +30,24 @@ export default function ToolsPage() {
   const [totalPages, setTotalPages] = useState(1);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  // HARD CODED CATEGORIES
+  const masterCategories = [
+    "ihfe",
+    "CPVC",
+    "PPR",
+    "Electrical DB",
+    "Wires",
+    "PVC",
+    "Switches & Plates",
+    "UG Cable & Accessories",
+    "Sanitary",
+    "Metal & Pipe",
+    "UPVC pipe & fittings",
+    "Lighting",
+  ];
+
+  const categories = masterCategories;
 
   // Fetch tools
   async function fetchTools() {
@@ -51,11 +69,25 @@ export default function ToolsPage() {
         credentials: "include",
       });
 
+      if (res.status === 401) {
+        setIsLoggedIn(false);
+      }
+
       if (!res.ok) throw new Error("Failed to fetch tools");
 
       const data = await res.json();
-      setTools(data.data || data.tools || []);
-      setTotalPages(data.totalPages || 1);
+
+      const list =
+        Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data?.tools)
+          ? data.tools
+          : Array.isArray(data)
+          ? data
+          : [];
+
+      setTools(list);
+      setTotalPages(data?.totalPages || 1);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -63,13 +95,11 @@ export default function ToolsPage() {
     }
   }
 
-  // Re-fetch when filters/page change
   useEffect(() => {
     fetchTools();
   }, [page, search, categoryFilter, subCategoryFilter]);
 
-  // Extract category/sub-category options
-  const categories = Array.from(new Set(tools.map((t) => t.category).filter(Boolean)));
+  // Extract subcategories dynamically
   const subCategories = Array.from(
     new Set(
       tools
@@ -79,19 +109,58 @@ export default function ToolsPage() {
     )
   );
 
-  // Local UI toggle action
-  const handleAction = (id: number) => {
-    setTools((prev) =>
-      prev.map((tool) =>
-        tool.id === id
-          ? { ...tool, used_count: tool.used_count ? 0 : 1 }
-          : tool
-      )
-    );
-  };
+  // REQUEST A TOOL
+  async function requestTool(tool: Tool) {
+    if (!isLoggedIn) {
+      alert("Please sign in to request tools.");
+      return;
+    }
 
+    try {
+      const res = await fetch(`${API_BASE}/user/tools/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ tool_id: tool.id }),
+      });
+
+      if (res.status === 401) {
+        setIsLoggedIn(false);
+        alert("Please sign in to request tools.");
+        return;
+      }
+
+      if (!res.ok) throw new Error("Request failed");
+
+      fetchTools();
+    } catch (e) {
+      alert("Error requesting tool");
+    }
+  }
+
+  // RETURN TOOL
+  async function returnTool(tool: Tool) {
+    try {
+      const res = await fetch(`${API_BASE}/user/tools/return`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ tool_id: tool.id }),
+      });
+
+      if (!res.ok) throw new Error("Return failed");
+
+      fetchTools();
+    } catch (e) {
+      alert("Error returning tool");
+    }
+  }
+
+  // LOADING STATE
   if (loading) {
-    return <div className="text-center mt-10 text-gray-500">Loading tools...</div>;
+    return (
+      <div className="text-center mt-10 text-gray-500">Loading tools...</div>
+    );
   }
 
   if (error) {
@@ -104,12 +173,12 @@ export default function ToolsPage() {
 
   return (
     <div className="max-w-md mx-auto mt-8 space-y-6 pb-24">
-      <h1 className="text-xl font-semibold text-black text-center">Active Tools</h1>
+      <h1 className="text-xl font-semibold text-black text-center">
+        Active Tools
+      </h1>
 
-      {/* SEARCH + FILTERS */}
+      {/* SEARCH + FILTER */}
       <div className="space-y-3">
-
-        {/* Search */}
         <input
           type="text"
           placeholder="Search tools..."
@@ -121,7 +190,7 @@ export default function ToolsPage() {
           }}
         />
 
-        {/* Category */}
+        {/* CATEGORY */}
         <select
           className="w-full border px-3 py-2 rounded bg-white text-black"
           value={categoryFilter}
@@ -139,7 +208,7 @@ export default function ToolsPage() {
           ))}
         </select>
 
-        {/* Sub Category */}
+        {/* SUBCATEGORY */}
         <select
           className="w-full border px-3 py-2 rounded bg-white text-black"
           value={subCategoryFilter}
@@ -160,9 +229,8 @@ export default function ToolsPage() {
       {/* TOOL LIST */}
       <div className="space-y-4">
         {tools.map((tool) => {
-          // FIXED: correct logic for borrowed/available
           const isBorrowed = (tool.used_count ?? 0) > 0;
-          const status = isBorrowed ? "borrowed" : "available";
+          const canRequest = tool.available_count! > 0;
 
           return (
             <div
@@ -172,36 +240,43 @@ export default function ToolsPage() {
               <div className="flex items-center gap-3">
                 <Wrench
                   size={22}
-                  className={status === "available" ? "text-green-500" : "text-yellow-500"}
+                  className={
+                    isBorrowed ? "text-yellow-500" : "text-green-500"
+                  }
                 />
                 <div>
                   <p className="text-gray-800 font-medium">{tool.name}</p>
                   <p className="text-xs text-gray-500">{tool.category}</p>
                   <p className="text-xs text-gray-500">{tool.sub_category}</p>
                   <p className="text-xs text-gray-500">
-                    {status === "available" ? "Available" : "Borrowed"}
+                    {isBorrowed ? "Borrowed" : "Available"}
                   </p>
                 </div>
               </div>
 
-              <button
-                onClick={() => handleAction(tool.id)}
-                className={`flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium transition ${
-                  status === "available"
-                    ? "bg-green-500 text-white hover:bg-green-600"
-                    : "bg-yellow-500 text-white hover:bg-yellow-600"
-                }`}
-              >
-                {status === "available" ? (
-                  <>
-                    <CheckCircle size={16} /> Request
-                  </>
-                ) : (
-                  <>
-                    <ArrowLeftCircle size={16} /> Return
-                  </>
-                )}
-              </button>
+              {/* BUTTON LOGIC */}
+              {isBorrowed ? (
+                <button
+                  onClick={() => returnTool(tool)}
+                  className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium bg-yellow-500 text-white"
+                >
+                  <ArrowLeftCircle size={16} /> Return
+                </button>
+              ) : canRequest ? (
+                <button
+                  onClick={() => requestTool(tool)}
+                  className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium bg-green-500 text-white"
+                >
+                  <CheckCircle size={16} /> Request
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="px-4 py-2 rounded-xl text-sm font-medium bg-gray-300 text-gray-500"
+                >
+                  Out of Stock
+                </button>
+              )}
             </div>
           );
         })}

@@ -54,8 +54,21 @@ export default function ActiveToolsPage() {
     fetchTools();
   }, [page, search, categoryFilter, subCategoryFilter]);
 
-  // Generate unique category list
-  const categories = Array.from(new Set(tools.map((t) => t.category)));
+  const masterCategories = [
+    "ihfe",
+    "CPVC",
+    "PPR",
+    "Electrical DB",
+    "Wires",
+    "PVC",
+    "Switches & Plates",
+    "UG Cable & Accessories",
+    "Sanitary",
+    "Metal & Pipe",
+    "UPVC pipe & fittings",
+    "Lighting",
+  ];
+  const categories = masterCategories;
 
   // Generate subcategory list based on selected category
   const subCategories = Array.from(
