@@ -4,10 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
+type EmployeeForm = {
+  full_name: string;
+  email: string;
+  password: string;
+  phone: string;
+  base_wage: string;
+  overtime_wage_percent: string;
+  created_by: string;
+  is_admin: boolean;
+};
+
 export default function AddEmployee() {
   const router = useRouter();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<EmployeeForm>({
     full_name: "",
     email: "",
     password: "",
@@ -18,10 +29,14 @@ export default function AddEmployee() {
     is_admin: false,
   });
 
-  const handleChange = (key: string, value: any) => {
+  // Type-safe change handler
+  const handleChange = <K extends keyof EmployeeForm>(
+    key: K,
+    value: EmployeeForm[K]
+  ) => {
     setForm((prev) => ({
       ...prev,
-      [key]: value ?? "", // ensures never undefined
+      [key]: value,
     }));
   };
 
@@ -39,11 +54,14 @@ export default function AddEmployee() {
       is_admin: form.is_admin,
     };
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/user/add`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });    
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/user/add`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
 
     if (res.ok) {
       alert("User added successfully!");
@@ -63,9 +81,7 @@ export default function AddEmployee() {
           <ArrowLeft className="w-5 h-5 mr-1" /> Back
         </button>
 
-        <h1 className="text-2xl font-semibold text-gray-800 mb-6">
-          Add User
-        </h1>
+        <h1 className="text-2xl font-semibold text-gray-800 mb-6">Add User</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
@@ -74,6 +90,7 @@ export default function AddEmployee() {
             className="w-full border rounded-xl p-3 text-black"
             value={form.full_name}
             onChange={(e) => handleChange("full_name", e.target.value)}
+            required
           />
 
           <input
@@ -82,6 +99,7 @@ export default function AddEmployee() {
             className="w-full border rounded-xl p-3 text-black"
             value={form.email}
             onChange={(e) => handleChange("email", e.target.value)}
+            required
           />
 
           <input
@@ -90,6 +108,7 @@ export default function AddEmployee() {
             className="w-full border rounded-xl p-3 text-black"
             value={form.password}
             onChange={(e) => handleChange("password", e.target.value)}
+            required
           />
 
           <input
